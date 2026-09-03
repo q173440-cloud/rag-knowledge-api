@@ -1,0 +1,19 @@
+Python 是一种通用编程语言，语法相对简洁，经常用于 Web 开发、数据分析和人工智能应用开发。
+
+FastAPI 是一个用于使用 Python 构建 Web API 的框架，可以接收 HTTP 请求并返回 JSON 响应。
+
+HTTP 是客户端和服务器之间进行通信的一种协议，常见的请求方法包括 GET 和 POST。
+
+JSON 是一种常见的数据交换格式，在 Python 中通常可以转换成字典或列表等数据结构。
+
+LLM API 允许程序通过 HTTP 请求调用大语言模型，并获得模型生成的回答。
+
+RAG 是 Retrieval Augmented Generation 的缩写，核心思想是在生成回答之前先从外部知识库中检索相关资料。
+
+Retrieval 是 RAG 中负责查找相关资料的阶段，它的输出可以作为后续大语言模型回答问题时的参考信息。
+
+Context 是提供给大语言模型的参考信息，在 RAG 中通常来自 Retrieval 找到的相关文本。
+
+Embedding 可以把文本转换成向量表示，使程序能够根据语义相似程度查找相关文本。
+
+Generation 是 RAG 中由大语言模型根据用户问题和提供的 Context 生成最终回答的阶段。
