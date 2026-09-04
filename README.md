@@ -83,3 +83,35 @@ question 与 chunk 相同字符越多
 暂未支持 PDF 等复杂文档
 
 后续版本将逐步改进 Retrieval。
+
+## Day 6 - No-Match Gate
+
+在原有 lexical retrieval baseline 上增加了一个简单的 No-Match Gate。
+
+当前流程：
+
+question
+→ retrieval
+→ best_score + best_chunk
+→ exact-term gate
+→ generation
+
+当问题和检索结果之间没有明确主题词匹配时：
+
+- 不调用 LLM
+- 返回“知识库没有足够相关资料”
+- sources 返回空列表
+
+### 当前限制
+
+当前 Gate 只是教学用的关键词规则，不能判断知识库是否真的存在答案。
+
+例如：
+
+`FastAPI 默认使用什么数据库？`
+
+虽然问题和检索资料都包含 `FastAPI`，Gate 会放行，但检索到的资料实际上并没有数据库相关答案。
+
+因此：
+
+关键词匹配成功 ≠ 资料一定足够回答问题。

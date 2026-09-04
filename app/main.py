@@ -3,6 +3,17 @@ from pydantic import BaseModel
 import os
 import json
 import requests
+topic_terms = [
+    "Python",
+    "FastAPI",
+    "HTTP",
+    "JSON",
+    "RAG",
+    "Retrieval",
+    "Context",
+    "Embedding",
+    "Generation"
+]
 app = FastAPI()
 class AskRequest(BaseModel):
     question: str
@@ -11,21 +22,41 @@ class AskRequest(BaseModel):
 def ask(request: AskRequest):
     question = request.question
     model = request.model
-    context = retrieve(question, chunks)
+
+    best_score, best_chunk = retrieve(question, chunks)
+
+    matched = False
+
+    for topic_term in topic_terms:
+        if topic_term in question:
+            if topic_term in best_chunk:
+                matched = True
+
+    if matched == False:
+        return {
+            "answer": "知识库没有足够相关资料",
+            "sources": [],
+            "best_score": best_score
+        }
+
     prompt = f"""
         参考资料：
-        {context}
+        {best_chunk}
 
         用户问题：
         {question}
 
         请根据参考资料回答用户问题。
         """
+
     answer = ask_llm(prompt, model)
+
     return {
-    "answer": answer,
-    "sources": [context]
+        "answer": answer,
+        "sources": [best_chunk],
+        "best_score": best_score
     }
+                
 @app.get("/health")
 def ceshi():
     return {"status": "ok"}
@@ -82,22 +113,15 @@ def score_chunk(question, chunk):
     return score
 def retrieve(question, chunks):
     cunchu = []
+
     for chunk in chunks:
-        cunch=score_chunk(question,chunk)
-        cunchu.append((cunch,chunk))
-    cunchu.sort(key=get_score,reverse=True)
-    return cunchu[0][1]    
+        cunch = score_chunk(question, chunk)
+        cunchu.append((cunch, chunk))
+
+    cunchu.sort(key=get_score, reverse=True)
+
+    best_score = cunchu[0][0]
+    best_chunk = cunchu[0][1]
+
+    return (best_score, best_chunk) 
 chunks = load_chunks("data/knowledge.txt")
-
-
-#question = "RAG的核心思想是什么"
-
-
-
-#context = retrieve(question, chunks)
-
-
-
-#answer = ask_llm(prompt, "gemini-3-flash")
-
-#print(answer)
