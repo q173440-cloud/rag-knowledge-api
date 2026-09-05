@@ -115,3 +115,44 @@ question
 因此：
 
 关键词匹配成功 ≠ 资料一定足够回答问题。
+
+## Semantic Retrieval
+
+项目已经从基于字符重合的 Lexical Retrieval，
+升级为基于 Embedding 的 Semantic Retrieval。
+
+当前使用：
+
+- sentence-transformers
+- paraphrase-multilingual-MiniLM-L12-v2
+
+基本流程：
+
+用户问题
+→ Question Embedding
+→ 与预计算的 Chunk Embeddings 比较
+→ Semantic Similarity
+→ 选择最高分 Chunk
+→ 作为 Context 交给 LLM
+
+知识库 Chunk Embeddings 会在程序启动时预计算，
+避免每次用户提问都重新计算。
+
+### 当前临时 Gate
+
+根据当前模型、知识库和少量测试数据，
+暂时使用 0.30 作为最低语义相似度。
+
+该阈值只是当前实验 baseline，不是通用标准。
+
+### 当前限制
+
+Semantic similarity 高
+不代表资料一定包含回答问题所需的具体信息。
+
+例如：
+
+FastAPI 默认使用什么数据库？
+
+虽然可以检索到 FastAPI 相关资料，
+但资料本身可能并没有数据库相关答案。

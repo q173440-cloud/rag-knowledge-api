@@ -1,3 +1,4 @@
+from sentence_transformers import SentenceTransformer, util
 from fastapi import FastAPI
 from pydantic import BaseModel
 import os
@@ -23,14 +24,8 @@ def ask(request: AskRequest):
     question = request.question
     model = request.model
 
-    best_score, best_chunk = retrieve(question, chunks)
-
-    matched = False
-
-    for topic_term in topic_terms:
-        if topic_term in question:
-            if topic_term in best_chunk:
-                matched = True
+    best_score, best_chunk = semantic_retrieve(question, chunks,chunk_embeddings,embedding_model)
+    matched=gate(best_score)
 
     if matched == False:
         return {
@@ -124,4 +119,61 @@ def retrieve(question, chunks):
     best_chunk = cunchu[0][1]
 
     return (best_score, best_chunk) 
+
+def semantic_retrieve(
+    question,           # 用户问题
+    chunks,             # 知识库原始文字
+    chunk_embeddings,   # 所有知识库资料的语义向量
+    embedding_model     # 把文字转换成语义向量的模型
+):
+    question_embedding = embedding_model.encode(
+        question,
+        convert_to_tensor=True
+    )
+    # 把用户问题转换成语义向量
+
+    results = []
+
+    for chunk, chunk_embedding in zip(chunks, chunk_embeddings):
+
+        similarity = util.cos_sim(
+            question_embedding,
+            chunk_embedding
+        ).item()
+        # 计算“用户问题”和“当前资料”的语义相似度
+
+        results.append((similarity, chunk))
+        # 保存：
+        # (语义相似度, 当前原始资料)
+
+    results.sort(key=get_score, reverse=True)
+    # 按语义相似度从高到低排序
+
+    best_score = results[0][0]
+    # 最大的语义相似度
+
+    best_chunk = results[0][1]
+    # 与问题语义最相关的原始资料
+
+    return best_score, best_chunk
+def gate(best_score):
+    if best_score <0.3 :
+        return False
+    else :
+        return True
+
 chunks = load_chunks("data/knowledge.txt")
+# 读取知识库原始文字资料
+
+embedding_model = SentenceTransformer(
+    "paraphrase-multilingual-MiniLM-L12-v2"
+)
+# 加载 Embedding 模型
+# 负责把文字转换成可以比较语义的数字向量
+
+chunk_embeddings = embedding_model.encode(
+    chunks,
+    convert_to_tensor=True
+)
+# 把所有知识库资料提前转换成语义向量
+# 这些资料没有变，所以程序启动时计算一次即可        
