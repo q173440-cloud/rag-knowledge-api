@@ -156,3 +156,93 @@ FastAPI 默认使用什么数据库？
 
 虽然可以检索到 FastAPI 相关资料，
 但资料本身可能并没有数据库相关答案。
+
+## Top-K Semantic Retrieval 与 Multi-Chunk Context
+
+项目目前支持 Top-K Semantic Retrieval。
+
+Semantic Retrieval 会计算用户问题与知识库各个 chunk 的语义相似度，按照相似度从高到低排序，并取得前 K 个候选结果。
+
+```python
+top_results = results[:top_k]
+```
+
+其中：
+
+- `top_k`：最多取得多少个候选资料
+- `top_results`：排名前 K 的候选结果
+
+### Candidate Filtering
+
+Top-K 只是候选资料，不代表所有候选都会提供给 LLM。
+
+当前项目使用临时相似度阈值 `0.30` 进行筛选：
+
+```python
+context_chunks = []
+
+for result in top_results:
+    if result[0] >= 0.3:
+        context_chunks.append(result[1])
+    else:
+        break
+```
+
+只有满足当前相关度要求的资料才会真正进入 Context。
+
+### Multi-Chunk Context
+
+筛选后的多个 chunk 会组合成一段 Context：
+
+```python
+context_text = "\n\n".join(context_chunks)
+```
+
+这样一个问题可以同时参考多个相关知识库片段，而不再只能使用 Top-1 的单条资料。
+
+### Sources
+
+API 返回的 `sources` 表示本次真正进入 Context、实际提供给 LLM 的资料。
+
+例如：
+
+```json
+{
+  "sources": [
+    "资料A",
+    "资料B"
+  ]
+}
+```
+
+这样可以保留每条资料之间的边界，方便后续程序、前端和调试使用。
+
+### No-Match Gate
+
+如果最高相似度：
+
+```text
+best_score < 0.30
+```
+
+则直接返回知识库没有足够相关资料，并且不会调用 LLM。
+
+### 当前已验证
+
+- 明确命中问题可以正常检索
+- 语义改写问题仍可以找到相关资料
+- 明显无关问题可以被 Gate 拦截
+- 一个问题需要多个 chunk 时，可以同时使用多个相关资料
+- `sources` 与实际进入 Context 的资料保持一致
+
+### 当前限制
+
+`0.30` 只是当前 Embedding 模型和小型知识库下使用的临时阈值，并不是通用标准。
+
+同时：
+
+- 语义相似度高，不代表资料一定包含问题答案
+- Top-K 找到多个相关资料，不代表知识库一定能够回答问题
+- Context 中存在相关资料，也不能保证 LLM 最终回答一定正确
+
+当前阶段主要验证 Retrieval、Candidate Filtering、Multi-Chunk Context 和 sources 的数据流，尚未进行正式的回答质量 Evaluation。

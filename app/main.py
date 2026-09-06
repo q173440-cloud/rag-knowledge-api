@@ -24,8 +24,17 @@ def ask(request: AskRequest):
     question = request.question
     model = request.model
 
-    best_score, best_chunk = semantic_retrieve(question, chunks,chunk_embeddings,embedding_model)
-    matched=gate(best_score)
+    top_results = semantic_retrieve(
+    question,
+    chunks,
+    chunk_embeddings,
+    embedding_model
+    )
+    best_score = top_results[0][0]
+    # 第一名候选的相似度
+
+    matched = gate(best_score)
+    # 继续使用昨天的 gate
 
     if matched == False:
         return {
@@ -34,9 +43,17 @@ def ask(request: AskRequest):
             "best_score": best_score
         }
 
+    context_chunks = []
+
+    for result in top_results:
+        if result[0] >= 0.3:
+            context_chunks.append(result[1])
+        else:
+            break
+    context_text = "\n\n".join(context_chunks)
     prompt = f"""
         参考资料：
-        {best_chunk}
+        {context_text}
 
         用户问题：
         {question}
@@ -48,7 +65,7 @@ def ask(request: AskRequest):
 
     return {
         "answer": answer,
-        "sources": [best_chunk],
+        "sources": context_chunks,
         "best_score": best_score
     }
                 
@@ -124,7 +141,8 @@ def semantic_retrieve(
     question,           # 用户问题
     chunks,             # 知识库原始文字
     chunk_embeddings,   # 所有知识库资料的语义向量
-    embedding_model     # 把文字转换成语义向量的模型
+    embedding_model,    # 把文字转换成语义向量的模型
+    top_k=3
 ):
     question_embedding = embedding_model.encode(
         question,
@@ -148,14 +166,9 @@ def semantic_retrieve(
 
     results.sort(key=get_score, reverse=True)
     # 按语义相似度从高到低排序
-
-    best_score = results[0][0]
-    # 最大的语义相似度
-
-    best_chunk = results[0][1]
-    # 与问题语义最相关的原始资料
-
-    return best_score, best_chunk
+    top_results= results[:top_k]  
+    # 排名前 K 的候选结果 
+    return top_results
 def gate(best_score):
     if best_score <0.3 :
         return False
