@@ -246,3 +246,32 @@ best_score < 0.30
 - Context 中存在相关资料，也不能保证 LLM 最终回答一定正确
 
 当前阶段主要验证 Retrieval、Candidate Filtering、Multi-Chunk Context 和 sources 的数据流，尚未进行正式的回答质量 Evaluation。
+
+## Minimal Retrieval Evaluation
+
+新增了一个最小 Retrieval Evaluation，用于在修改检索逻辑后快速检查已有能力是否发生退化。
+
+运行：
+
+```powershell
+python eval_retrieval.py
+
+当前覆盖：
+
+明确命中
+语义改写
+No-Match
+Multi-Chunk
+
+当前结果：
+
+Case A | PASS
+Case B | FAIL
+Case C | PASS
+Case D | PASS
+
+Passed: 3 / 4
+
+Case B 中，预期的 RAG 核心资料在语义相似度排序中只排第 5，因此没有进入 Top-3。当前仅记录这个限制，没有为了让测试通过而调整 threshold 或 Top-K。
+
+当前测试集只有少量固定案例，不代表完整的 RAG benchmark，也不能证明 Retrieval 对所有现实问题都可靠。
