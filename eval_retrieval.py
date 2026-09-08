@@ -1,4 +1,4 @@
-from app.main import (
+from app.retrieval import (
     semantic_retrieve,
     gate,
     chunks,
@@ -80,6 +80,3 @@ for case in cases:
         result_text = "FAIL"
 
     print(case["name"], "|", result_text)
-
-print()
-print("Passed:", passed_count, "/", len(cases))

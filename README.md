@@ -275,3 +275,14 @@ Passed: 3 / 4
 Case B 中，预期的 RAG 核心资料在语义相似度排序中只排第 5，因此没有进入 Top-3。当前仅记录这个限制，没有为了让测试通过而调整 threshold 或 Top-K。
 
 当前测试集只有少量固定案例，不代表完整的 RAG benchmark，也不能证明 Retrieval 对所有现实问题都可靠。
+
+## Project Structure
+
+- `app/main.py`：FastAPI 接口、RAG 请求流程和 LLM 调用
+- `app/retrieval.py`：知识库加载、Embedding、Semantic Retrieval 和 Gate
+- `eval_retrieval.py`：Retrieval 回归测试
+
+## Run Retrieval Evaluation
+
+```powershell
+python eval_retrieval.py
