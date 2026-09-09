@@ -1,288 +1,281 @@
 # RAG Knowledge API
 
-一个使用 FastAPI、简单文本检索和 LLM API 构建的最小 RAG 知识库问答项目。
+一个基于 FastAPI、Semantic Retrieval（语义检索）和 LLM API 构建的最小 RAG 知识库问答项目。
 
-## 功能
+当前项目支持：
 
-- 从本地 `knowledge.txt` 读取知识
-- 将知识文档切分成多个 chunk
-- 根据用户问题检索相关 chunk
-- 将检索结果作为 Context 提供给 LLM
-- 通过 FastAPI 提供 `/ask` HTTP 接口
-- 返回模型回答和检索到的 source
+- 本地文本知识库
+- Sentence Transformers Embedding
+- Top-K Semantic Retrieval
+- 相似度阈值过滤
+- Multi-Chunk Context
+- No-Match Gate
+- FastAPI `/ask` 接口
+- Retrieval Evaluation
 
-## 数据流
+---
+
+## Project Structure
 
 ```text
-knowledge.txt
+rag-knowledge-api/
+├─ app/
+│  ├─ main.py
+│  └─ retrieval.py
+├─ data/
+│  └─ knowledge.txt
+├─ eval_retrieval.py
+├─ requirements.txt
+├─ .gitignore
+└─ README.md
+```
+
+主要文件：
+
+- `app/main.py`：FastAPI 接口、RAG 请求流程和 LLM 调用
+- `app/retrieval.py`：知识库加载、Embedding、Semantic Retrieval 和 Gate
+- `data/knowledge.txt`：本地知识库
+- `eval_retrieval.py`：Retrieval 回归测试
+
+---
+
+## RAG Flow
+
+```text
+用户问题
 ↓
-load_chunks()
+Semantic Retrieval
 ↓
-chunks
-
-question
+Top-K 候选资料
 ↓
-retrieve()
+Similarity Threshold Filtering
 ↓
-context
+Multi-Chunk Context
 ↓
-context + question
+LLM
 ↓
-prompt
-↓
-LLM API
-↓
-answer
-↓
-FastAPI Response
-启动
-
-设置环境变量：
-
-LLM_API_KEY
-
-然后在项目根目录运行：
-
-C:\Users\wtqweeqopt\AppData\Local\Programs\Python\Python313\python.exe -m uvicorn app.main:app --reload
-
-打开：
-
-http://127.0.0.1:8000/docs
-API 示例
-
-请求：
-
-{
-  "question": "RAG的核心思想是什么",
-  "model": "gemini-3-flash"
-}
-
-响应示例：
-
-{
-  "answer": "根据参考资料生成的回答",
-  "sources": [
-    "Retrieval 检索到的知识库文本"
-  ]
-}
-当前 Retrieval
-
-当前版本使用非常简单的字符重合数量作为相关性分数。
-
-question 与 chunk 相同字符越多
-→ score 越高
-→ 优先返回高分 chunk
-
-这是用于建立 RAG 基础数据流的 baseline，并不具备真正的语义理解能力。
-
-当前局限
-字符重合不等于语义相关
-知识库没有答案时仍然会返回一个最高分 chunk
-暂未使用 Embedding
-暂未使用向量数据库
-暂未支持 PDF 等复杂文档
-
-后续版本将逐步改进 Retrieval。
-
-## Day 6 - No-Match Gate
-
-在原有 lexical retrieval baseline 上增加了一个简单的 No-Match Gate。
-
-当前流程：
-
-question
-→ retrieval
-→ best_score + best_chunk
-→ exact-term gate
-→ generation
-
-当问题和检索结果之间没有明确主题词匹配时：
-
-- 不调用 LLM
-- 返回“知识库没有足够相关资料”
-- sources 返回空列表
-
-### 当前限制
-
-当前 Gate 只是教学用的关键词规则，不能判断知识库是否真的存在答案。
-
-例如：
-
-`FastAPI 默认使用什么数据库？`
-
-虽然问题和检索资料都包含 `FastAPI`，Gate 会放行，但检索到的资料实际上并没有数据库相关答案。
-
-因此：
-
-关键词匹配成功 ≠ 资料一定足够回答问题。
-
-## Semantic Retrieval
-
-项目已经从基于字符重合的 Lexical Retrieval，
-升级为基于 Embedding 的 Semantic Retrieval。
+最终回答
+```
 
 当前使用：
 
-- sentence-transformers
-- paraphrase-multilingual-MiniLM-L12-v2
+- Embedding Model：`paraphrase-multilingual-MiniLM-L12-v2`
+- Top-K：最多取得 3 个候选资料
+- Similarity Threshold：`0.30`
 
-基本流程：
+只有达到当前阈值的资料才会真正进入 Context。
 
-用户问题
-→ Question Embedding
-→ 与预计算的 Chunk Embeddings 比较
-→ Semantic Similarity
-→ 选择最高分 Chunk
-→ 作为 Context 交给 LLM
+如果最高相似度低于 `0.30`：
 
-知识库 Chunk Embeddings 会在程序启动时预计算，
-避免每次用户提问都重新计算。
+```text
+answer = 知识库没有足够相关资料
+sources = []
+```
 
-### 当前临时 Gate
+并且不会调用 LLM。
 
-根据当前模型、知识库和少量测试数据，
-暂时使用 0.30 作为最低语义相似度。
+`0.30` 只是针对当前模型、小型知识库和现有测试数据使用的临时阈值，不是通用标准。
 
-该阈值只是当前实验 baseline，不是通用标准。
+---
 
-### 当前限制
+## Environment
 
-Semantic similarity 高
-不代表资料一定包含回答问题所需的具体信息。
+当前项目使用 Python。
 
-例如：
+本项目目前在 Windows + PowerShell 环境下开发和验证。
 
-FastAPI 默认使用什么数据库？
+创建虚拟环境：
 
-虽然可以检索到 FastAPI 相关资料，
-但资料本身可能并没有数据库相关答案。
+```powershell
+python -m venv .venv
+```
 
-## Top-K Semantic Retrieval 与 Multi-Chunk Context
+激活虚拟环境：
 
-项目目前支持 Top-K Semantic Retrieval。
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-Semantic Retrieval 会计算用户问题与知识库各个 chunk 的语义相似度，按照相似度从高到低排序，并取得前 K 个候选结果。
+安装依赖：
 
-```python
-top_results = results[:top_k]
+```powershell
+python -m pip install -r requirements.txt
+```
+
+---
+
+## LLM Configuration
+
+启动 API 前需要配置两个环境变量：
+
+```text
+LLM_API_KEY
+LLM_API_URL
 ```
 
 其中：
 
-- `top_k`：最多取得多少个候选资料
-- `top_results`：排名前 K 的候选结果
+- `LLM_API_KEY`：LLM API 的访问密钥
+- `LLM_API_URL`：LLM API 请求地址
 
-### Candidate Filtering
+PowerShell 临时设置方式：
 
-Top-K 只是候选资料，不代表所有候选都会提供给 LLM。
-
-当前项目使用临时相似度阈值 `0.30` 进行筛选：
-
-```python
-context_chunks = []
-
-for result in top_results:
-    if result[0] >= 0.3:
-        context_chunks.append(result[1])
-    else:
-        break
+```powershell
+$env:LLM_API_KEY="your-api-key"
+$env:LLM_API_URL="your-api-url"
 ```
 
-只有满足当前相关度要求的资料才会真正进入 Context。
+不要把真实 API Key 写入代码、README 或提交到 Git。
 
-### Multi-Chunk Context
+当前 LLM 请求使用 OpenAI-compatible Chat Completions 风格的接口格式。
 
-筛选后的多个 chunk 会组合成一段 Context：
+调用 `/ask` 时还需要提供 `model`，模型名称必须能够被当前配置的 LLM API 服务识别。
 
-```python
-context_text = "\n\n".join(context_chunks)
-```
+---
 
-这样一个问题可以同时参考多个相关知识库片段，而不再只能使用 Top-1 的单条资料。
+## Run Retrieval Evaluation
 
-### Sources
+Retrieval Evaluation 不需要配置 `LLM_API_KEY` 和 `LLM_API_URL`。
 
-API 返回的 `sources` 表示本次真正进入 Context、实际提供给 LLM 的资料。
-
-例如：
-
-```json
-{
-  "sources": [
-    "资料A",
-    "资料B"
-  ]
-}
-```
-
-这样可以保留每条资料之间的边界，方便后续程序、前端和调试使用。
-
-### No-Match Gate
-
-如果最高相似度：
-
-```text
-best_score < 0.30
-```
-
-则直接返回知识库没有足够相关资料，并且不会调用 LLM。
-
-### 当前已验证
-
-- 明确命中问题可以正常检索
-- 语义改写问题仍可以找到相关资料
-- 明显无关问题可以被 Gate 拦截
-- 一个问题需要多个 chunk 时，可以同时使用多个相关资料
-- `sources` 与实际进入 Context 的资料保持一致
-
-### 当前限制
-
-`0.30` 只是当前 Embedding 模型和小型知识库下使用的临时阈值，并不是通用标准。
-
-同时：
-
-- 语义相似度高，不代表资料一定包含问题答案
-- Top-K 找到多个相关资料，不代表知识库一定能够回答问题
-- Context 中存在相关资料，也不能保证 LLM 最终回答一定正确
-
-当前阶段主要验证 Retrieval、Candidate Filtering、Multi-Chunk Context 和 sources 的数据流，尚未进行正式的回答质量 Evaluation。
-
-## Minimal Retrieval Evaluation
-
-新增了一个最小 Retrieval Evaluation，用于在修改检索逻辑后快速检查已有能力是否发生退化。
-
-运行：
+在项目根目录运行：
 
 ```powershell
 python eval_retrieval.py
+```
 
-当前覆盖：
+当前测试主要覆盖：
 
-明确命中
-语义改写
-No-Match
-Multi-Chunk
+- 明确命中
+- 语义改写
+- No-Match
+- Multi-Chunk Retrieval
 
-当前结果：
+当前测试结果：
 
+```text
 Case A | PASS
 Case B | FAIL
 Case C | PASS
 Case D | PASS
 
 Passed: 3 / 4
+```
 
-Case B 中，预期的 RAG 核心资料在语义相似度排序中只排第 5，因此没有进入 Top-3。当前仅记录这个限制，没有为了让测试通过而调整 threshold 或 Top-K。
+Case B 中，预期的 RAG 核心资料没有进入当前 Top-3，因此测试失败。
 
-当前测试集只有少量固定案例，不代表完整的 RAG benchmark，也不能证明 Retrieval 对所有现实问题都可靠。
+当前保留这个真实失败结果，没有为了让测试全部通过而专门调整 threshold 或 Top-K。
 
-## Project Structure
+当前 Evaluation 只有少量固定案例，用于检查 Retrieval 修改后是否发生明显退化，不能代表完整的 RAG Benchmark。
 
-- `app/main.py`：FastAPI 接口、RAG 请求流程和 LLM 调用
-- `app/retrieval.py`：知识库加载、Embedding、Semantic Retrieval 和 Gate
-- `eval_retrieval.py`：Retrieval 回归测试
+---
 
-## Run Retrieval Evaluation
+## Start API
+
+首先配置：
+
+```text
+LLM_API_KEY
+LLM_API_URL
+```
+
+然后在项目根目录运行：
 
 ```powershell
-python eval_retrieval.py
+python -m uvicorn app.main:app --reload
+```
+
+默认地址：
+
+```text
+http://127.0.0.1:8000
+```
+
+健康检查：
+
+```text
+GET /health
+```
+
+FastAPI 文档：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## POST /ask
+
+主要接口：
+
+```text
+POST /ask
+```
+
+请求示例：
+
+```json
+{
+  "question": "RAG 的核心思想是什么？",
+  "model": "your-model-name"
+}
+```
+
+响应示例：
+
+```json
+{
+  "answer": "根据参考资料生成的回答",
+  "sources": [
+    "本次实际提供给 LLM 的知识库资料"
+  ],
+  "best_score": 0.42
+}
+```
+
+其中：
+
+- `answer`：LLM 根据 Context 生成的回答
+- `sources`：本次真正进入 Context 的资料
+- `best_score`：排名第一候选资料的语义相似度
+
+如果知识库没有足够相关资料，则不会调用 LLM。
+
+---
+
+## Custom Knowledge Base
+
+当前知识库存放在：
+
+```text
+data/knowledge.txt
+```
+
+如果希望使用自己的资料，可以修改或替换这个文件。
+
+修改知识库以后，需要重新启动程序，使新的知识内容重新生成 Embedding。
+
+### Evaluation 注意事项
+
+`eval_retrieval.py` 中的测试问题和 `expected_sources` 是针对仓库自带的 `knowledge.txt` 编写的。
+
+因此，如果替换了 `knowledge.txt`，原来的 Evaluation 测试案例可能不再适用，需要根据新的知识库重新设计测试问题和预期资料。
+
+---
+
+## Current Limitations
+
+当前项目仍然存在以下限制：
+
+- 知识库规模较小
+- 当前只支持本地文本知识库
+- Embedding 在内存中进行检索
+- 尚未使用 Vector Database
+- `0.30` 是临时 Similarity Threshold
+- Top-K 当前固定为 3
+- Evaluation Case 数量较少
+- Semantic Similarity 高不代表资料一定能够回答问题
+- Context 中存在相关资料也不能保证 LLM 最终回答一定正确
+- 暂未支持 PDF 等复杂文档输入
+
+当前项目用于实现和验证最小 RAG 工程流程，不是生产级 RAG 系统。
