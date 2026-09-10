@@ -80,3 +80,5 @@ for case in cases:
         result_text = "FAIL"
 
     print(case["name"], "|", result_text)
+
+print("Passed:", passed_count, "/", len(cases))

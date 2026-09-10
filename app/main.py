@@ -9,22 +9,8 @@ from app.retrieval import (
     gate,
     chunks,
     chunk_embeddings,
-    embedding_model,
-    get_score
+    embedding_model
 )
-
-
-topic_terms = [
-    "Python",
-    "FastAPI",
-    "HTTP",
-    "JSON",
-    "RAG",
-    "Retrieval",
-    "Context",
-    "Embedding",
-    "Generation"
-]
 
 
 app = FastAPI()
@@ -130,33 +116,3 @@ def ask_llm(prompt, model):
     answer = shuju["choices"][0]["message"]["content"]
 
     return answer
-
-
-# -------------------------
-# 以下是以前的 Lexical Retrieval 旧代码
-# Day 10 暂时不进行历史代码清理
-# -------------------------
-
-def score_chunk(question, chunk):
-    score = 0
-
-    for chur in question:
-        if chur in chunk:
-            score += 1
-
-    return score
-
-
-def retrieve(question, chunks):
-    cunchu = []
-
-    for chunk in chunks:
-        cunch = score_chunk(question, chunk)
-        cunchu.append((cunch, chunk))
-
-    cunchu.sort(key=get_score, reverse=True)
-
-    best_score = cunchu[0][0]
-    best_chunk = cunchu[0][1]
-
-    return (best_score, best_chunk)
