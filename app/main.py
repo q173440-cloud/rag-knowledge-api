@@ -1,8 +1,9 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 import os
 import json
 import requests
+
 
 from app.retrieval import (
     semantic_retrieve,
@@ -19,18 +20,21 @@ app = FastAPI()
 class AskRequest(BaseModel):
     question: str
     model: str
+    top_k: int = Field(default=3, ge=1, le=5)
 
 
 @app.post("/ask")
 def ask(request: AskRequest):
     question = request.question
     model = request.model
-
+    top_k = request.top_k
+    print("top_k =", top_k)
     top_results = semantic_retrieve(
         question,
         chunks,
         chunk_embeddings,
-        embedding_model
+        embedding_model,
+        top_k
     )
 
     best_score = top_results[0][0]
@@ -80,16 +84,27 @@ def ceshi():
     return {"status": "ok"}
 
 
-api_key = os.environ["LLM_API_KEY"]
-url = os.environ["LLM_API_URL"]
-
-headers = {
-    "Authorization": f"Bearer {api_key}",
-    "Content-Type": "application/json"
-}
-
 
 def ask_llm(prompt, model):
+    api_key = os.getenv("LLM_API_KEY")
+
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="API 密钥不存在"
+        )
+
+    url = os.getenv("LLM_API_URL")
+
+    if not url:
+        raise HTTPException(
+            status_code=503,
+            detail="API地址不存在"
+        )
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
     data = {
         "model": model,
         "messages": [
@@ -100,19 +115,32 @@ def ask_llm(prompt, model):
         ]
     }
 
-    response = requests.post(
-        url=url,
-        headers=headers,
-        json=data
-    )
+    try:
+        response = requests.post(
+            url=url,
+            headers=headers,
+            json=data,
+            timeout=10
+        )
+
+    except requests.exceptions.Timeout:
+        raise HTTPException(
+            status_code=503,
+            detail="大模型请求超时"
+        )
+
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(
+            status_code=503,
+            detail="无法连接大模型服务"
+        )
 
     if response.status_code != 200:
-        print("请求失败")
-        print(response.status_code)
-        print(response.text)
-        return
+        raise HTTPException(
+            status_code=502,
+            detail="大模型服务返回错误"
+        )
 
     shuju = json.loads(response.text)
     answer = shuju["choices"][0]["message"]["content"]
-
     return answer

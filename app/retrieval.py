@@ -13,10 +13,10 @@ def get_score(item):
 
 
 def semantic_retrieve(
-    question,           # 用户问题
-    chunks,             # 知识库原始文字
-    chunk_embeddings,   # 所有知识库资料的语义向量
-    embedding_model,    # 把文字转换成语义向量的模型
+    question,
+    chunks,
+    chunk_embeddings,
+    embedding_model,
     top_k=3
 ):
     question_embedding = embedding_model.encode(
@@ -69,3 +69,4 @@ chunk_embeddings = embedding_model.encode(
 )
 # 把所有知识库资料提前转换成语义向量
 # 这些资料没有变，所以程序启动时计算一次即可
+
