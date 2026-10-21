@@ -241,6 +241,18 @@ POST /ask
 
 如果知识库没有足够相关资料，则不会调用 LLM。
 
+如果知识库暂无可用资料（如知识库为空或仅包含空白内容）：
+
+```json
+{
+  "answer": "知识库暂无可用资料",
+  "sources": [],
+  "best_score": null
+}
+```
+
+并且不会进行 Embedding 检索或调用 LLM。
+
 ---
 
 ## Custom Knowledge Base

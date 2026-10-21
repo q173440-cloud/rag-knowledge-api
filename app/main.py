@@ -25,6 +25,12 @@ class AskRequest(BaseModel):
 
 @app.post("/ask")
 def ask(request: AskRequest):
+    if not chunks:
+        return {
+            "answer": "知识库暂无可用资料",
+            "sources": [],
+            "best_score": None
+        }
     question = request.question
     model = request.model
     top_k = request.top_k
@@ -38,17 +44,15 @@ def ask(request: AskRequest):
     )
 
     best_score = top_results[0][0]
-    # 第一名候选的相似度
 
     matched = gate(best_score)
-    # 使用 retrieval.py 中的 gate
 
     if matched == False:
         return {
             "answer": "知识库没有足够相关资料",
             "sources": [],
             "best_score": best_score
-        }
+        }   
 
     context_chunks = []
 

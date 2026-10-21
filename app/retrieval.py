@@ -2,10 +2,14 @@ from sentence_transformers import SentenceTransformer, util
 
 
 def load_chunks(path):
+    valid_chunks = []
     with open(path, "r", encoding="utf-8") as file:
         text = file.read()
         chunks = text.split("\n\n")
-        return chunks
+        for chunk in chunks:
+            if chunk.strip():
+                valid_chunks.append(chunk)
+        return valid_chunks
 
 
 def get_score(item):
@@ -54,19 +58,24 @@ def gate(best_score):
         return True
 
 
+
+
+
 chunks = load_chunks("data/knowledge.txt")
 # 读取知识库原始文字资料
-
 embedding_model = SentenceTransformer(
     "paraphrase-multilingual-MiniLM-L12-v2"
 )
 # 加载 Embedding 模型
 # 负责把文字转换成可以比较语义的数字向量
 
-chunk_embeddings = embedding_model.encode(
-    chunks,
-    convert_to_tensor=True
-)
+if chunks:
+    chunk_embeddings = embedding_model.encode(
+        chunks,
+        convert_to_tensor=True
+    )
+else:
+    chunk_embeddings = []
 # 把所有知识库资料提前转换成语义向量
 # 这些资料没有变，所以程序启动时计算一次即可
 
