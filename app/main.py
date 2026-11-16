@@ -19,7 +19,7 @@ app = FastAPI()
 
 class AskRequest(BaseModel):
     question: str
-    model: str
+    model: str = Field(default_factory=lambda: os.getenv("LLM_MODEL") or "deepseek-flash")
     top_k: int = Field(default=3, ge=1, le=5)
 
 
@@ -53,7 +53,7 @@ def ask(request: AskRequest):
             "sources": [],
             "best_score": best_score
         }   
-
+ 
     context_chunks = []
 
     for result in top_results:
