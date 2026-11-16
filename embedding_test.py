@@ -1,8 +1,4 @@
-from sentence_transformers import SentenceTransformer, util
-
-model = SentenceTransformer(
-    "paraphrase-multilingual-MiniLM-L12-v2"
-)
+from app.retrieval import cosine_similarity, embedding_model
 
 texts = [
     "RAG 会在回答前查询外部资料。",
@@ -10,20 +6,10 @@ texts = [
     "HTTP 用于客户端与服务器通信。"
 ]
 
-embeddings = model.encode(
-    texts,
-    convert_to_tensor=True
-)
+embeddings = embedding_model.encode(texts)
 
-score_ab = util.cos_sim(
-    embeddings[0],
-    embeddings[1]
-).item()
-
-score_ac = util.cos_sim(
-    embeddings[0],
-    embeddings[2]
-).item()
+score_ab = cosine_similarity(embeddings[0], embeddings[1])
+score_ac = cosine_similarity(embeddings[0], embeddings[2])
 
 print("A 和 B：", score_ab)
 print("A 和 C：", score_ac)
